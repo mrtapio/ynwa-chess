@@ -6,7 +6,10 @@
   <title>YNWA Chess (PWA)</title>
   <meta name="theme-color" content="#c8102e">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+
+  <!-- chessboard.js CSS via jsDelivr -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+
   <style>
     :root{--lfc-red:#c8102e;--lfc-dark:#0e0e0f;--pitch-light:#3d8b5a;--pitch-dark:#2e6c46;--accent:#ffd100;}
     html,body{margin:0;padding:0;background:#0e0e0f;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
@@ -128,8 +131,12 @@
       navigator.serviceWorker.register('./sw.js').catch(()=>{});
     }
   </script>
-  <script src="https://unpkg.com/chess.js@1.0.0/dist/chess.min.js"></script>
-  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+
+  <!-- chess.js og chessboard.js via jsDelivr -->
+  <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+
+  <!-- appens logikk -->
   <script src="./app.js"></script>
 </body>
 </html>
