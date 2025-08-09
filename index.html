@@ -6,10 +6,7 @@
   <title>YNWA Chess (PWA)</title>
   <meta name="theme-color" content="#c8102e">
   <link rel="manifest" href="./manifest.webmanifest">
-
-  <!-- chessboard.js CSS via jsDelivr -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
-
   <style>
     :root{--lfc-red:#c8102e;--lfc-dark:#0e0e0f;--pitch-light:#3d8b5a;--pitch-dark:#2e6c46;--accent:#ffd100;}
     html,body{margin:0;padding:0;background:#0e0e0f;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
@@ -25,9 +22,10 @@
     .button.primary{background:linear-gradient(135deg,#e31d3b,var(--lfc-red))}
     .layout{display:grid;grid-template-columns:1fr;gap:10px}
     @media(min-width:760px){.layout{grid-template-columns:minmax(0,1fr) 300px;}}
-    .board-wrap{padding:10px;border-radius:14px;background:linear-gradient(180deg,#0d0d0d,#171717);border:1px solid rgba(255,255,255,.08)}
-    #board{margin:0 auto;border-radius:10px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.06);background:#0002}
-    .clock-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+    .board-wrap{padding:10px;border-radius:14px;background:linear-gradient(180deg,#0d0d0d,#171717);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center}
+    /* Viktig: fast kvadratisk høyde/bredde */
+    #board{width:100%;max-width:680px;aspect-ratio:1/1;border-radius:10px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.06);background:#0002}
+    .clock-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;width:100%}
     .clock{position:relative;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#0d0d0d}
     .clock .name{font-size:12px;opacity:.85}
     .clock .time{font-size:22px;font-variant-numeric:tabular-nums}
@@ -42,7 +40,7 @@
 </head>
 <body>
   <div class="app">
-    <header><h1>YNWA Chess (PWA)</h1><div>v1.3</div></header>
+    <header><h1>YNWA Chess (PWA)</h1><div>v1.4</div></header>
 
     <div class="toolbar">
       <div class="card">
@@ -131,12 +129,8 @@
       navigator.serviceWorker.register('./sw.js').catch(()=>{});
     }
   </script>
-
-  <!-- chess.js og chessboard.js via jsDelivr -->
   <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-
-  <!-- appens logikk -->
   <script src="./app.js"></script>
 </body>
 </html>
