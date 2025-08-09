@@ -1,136 +1,144 @@
-<!doctype html>
-<html lang="no">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>YNWA Chess (PWA)</title>
-  <meta name="theme-color" content="#c8102e">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
-  <style>
-    :root{--lfc-red:#c8102e;--lfc-dark:#0e0e0f;--pitch-light:#3d8b5a;--pitch-dark:#2e6c46;--accent:#ffd100;}
-    html,body{margin:0;padding:0;background:#0e0e0f;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
-    .app{max-width:920px;margin:0 auto;padding:12px}
-    header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:16px;
-      background:linear-gradient(135deg,var(--lfc-red),#99162b);box-shadow:0 10px 28px rgba(0,0,0,.35)}
-    h1{margin:0;font-size:18px}
-    .toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
-    @media(min-width:760px){.toolbar{grid-template-columns:repeat(4,minmax(0,1fr));}}
-    .card{background:#111;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px}
-    .select,.number,.button,.text{width:100%;background:#171717;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 12px}
-    .button{cursor:pointer;text-align:center}
-    .button.primary{background:linear-gradient(135deg,#e31d3b,var(--lfc-red))}
-    .layout{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:760px){.layout{grid-template-columns:minmax(0,1fr) 300px;}}
-    .board-wrap{padding:10px;border-radius:14px;background:linear-gradient(180deg,#0d0d0d,#171717);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center}
-    /* Viktig: fast kvadratisk høyde/bredde */
-    #board{width:100%;max-width:680px;aspect-ratio:1/1;border-radius:10px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.06);background:#0002}
-    .clock-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;width:100%}
-    .clock{position:relative;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#0d0d0d}
-    .clock .name{font-size:12px;opacity:.85}
-    .clock .time{font-size:22px;font-variant-numeric:tabular-nums}
-    .elapsed{position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--accent),#ff6a00);
-      opacity:.75;border-bottom-left-radius:12px;border-bottom-right-radius:12px;transform-origin:left center;transform:scaleX(0)}
-    .moves{max-height:220px;overflow:auto;background:#0b0b0b;border-radius:12px;padding:8px;border:1px solid rgba(255,255,255,.08)}
-    .moves span{display:inline-block;padding:2px 6px;margin:2px;border-radius:8px;background:#151515;border:1px solid rgba(255,255,255,.06);font-size:12px}
-    .status{text-align:center;margin-top:8px;font-weight:600}
-    .white-1e1d7{background: var(--pitch-light) !important;}
-    .black-3c85d{background: var(--pitch-dark) !important;}
-  </style>
-</head>
-<body>
-  <div class="app">
-    <header><h1>YNWA Chess (PWA)</h1><div>v1.4</div></header>
+const $ = (id)=>document.getElementById(id);
+const fmt = (ms)=>{ if(ms<0) ms=0; const s=Math.floor(ms/1000), m=Math.floor(s/60), sec=String(s%60).padStart(2,'0'); const t=Math.floor((ms%1000)/100); return s<20? `${m}:${sec}.${t}` : `${m}:${sec}`; };
+function escapeHtml(str){ return str.replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
 
-    <div class="toolbar">
-      <div class="card">
-        <label>Modus</label>
-        <select id="mode" class="select">
-          <option value="ai">Spill mot AI</option>
-          <option value="hvh">2 spillere (samme enhet)</option>
-        </select>
-        <div id="aiRow1" style="margin-top:8px">
-          <label>AI spiller</label>
-          <select id="aiSide" class="select"><option value="black">Svart</option><option value="white">Hvit</option></select>
-        </div>
-        <div id="aiRow2" style="margin-top:8px">
-          <label>AI-nivå (dybde)</label>
-          <input id="aiDepth" class="number" type="number" min="1" max="4" value="2">
-        </div>
-      </div>
-      <div class="card">
-        <label>Tidskontroll</label>
-        <select id="preset" class="select">
-          <option value="custom">Egendefinert</option><option value="1+0">1+0</option><option value="3+2">3+2</option>
-          <option value="5+3">5+3</option><option value="10+0">10+0</option><option value="15+10">15+10</option><option value="30+0">30+0</option>
-        </select>
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <input id="initMin" class="number" type="number" min="1" max="180" value="5"><span>min</span>
-          <input id="increment" class="number" type="number" min="0" max="60" value="3"><span>sek ink</span>
-        </div>
-      </div>
-      <div class="card">
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button id="startBtn" class="button primary">Start</button>
-          <button id="pauseBtn" class="button">Pause</button>
-          <button id="newBtn" class="button">Nullstill</button>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-          <button id="undoBtn" class="button">Angre</button>
-          <button id="drawBtn" class="button">Remis</button>
-          <button id="resignBtn" class="button">Resign</button>
-        </div>
-      </div>
-      <div class="card">
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button id="flipBtn" class="button">Flip brett</button>
-          <button id="pgnBtn" class="button">Kopier PGN</button>
-        </div>
-        <div style="margin-top:8px;font-size:12px;opacity:.85">Chrome → Installer app. Fungerer offline etter første besøk.</div>
-      </div>
-    </div>
+let labelMap = {
+  w:{K:"VIRGIL van DIJK (C)", Q:"MO SALAH", R:"TAA / ROBBO", B:"Mac A / Szobo", N:"NÚÑEZ / JOTA", P:"AKADEMIET"},
+  b:{K:"STEVEN GERRARD", Q:"SADIO MANÉ", R:"CARRA / HYYPIÄ", B:"XABI / HENDERSON", N:"TORRES / OWEN", P:"BOOT ROOM"}
+};
 
-    <div class="layout">
-      <div class="board-wrap">
-        <div class="clock-wrap">
-          <div id="wClock" class="clock"><div class="name">Hvit</div><div id="wTime" class="time">5:00</div><div id="wBar" class="elapsed"></div></div>
-          <div id="bClock" class="clock"><div class="name">Svart</div><div id="bTime" class="time">5:00</div><div id="bBar" class="elapsed"></div></div>
-        </div>
-        <div id="board"></div>
-        <div id="fallback" class="card" style="display:none;margin-top:8px;color:#fff">
-          Kunne ikke laste bibliotekene. Prøv å oppdatere siden.
-        </div>
-        <div class="card moves" id="moves"><div style="opacity:.8">Trekk vil vises her…</div></div>
-        <div class="status" id="status"></div>
+function svgPiece({color, type}){
+  const base = color==='w' ? '#c8102e' : '#f6f6f6';
+  const text = color==='w' ? '#ffffff' : '#c8102e';
+  const ring = color==='w' ? '#ffd100' : '#99162b';
+  const label = (labelMap[color] && labelMap[color][type]) || type;
+  const title = ({K:'KONGE',Q:'DRONNING',R:'TÅRN',B:'LØPER',N:'SPRINGER',P:'BONDE'})[type] || type;
+  const svg = `
+  <svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'>
+    <defs><radialGradient id='g' cx='50%' cy='40%'><stop offset='0%' stop-color='${color==='w'?'#ff8593':'#ffffff'}'/><stop offset='65%' stop-color='${base}'/><stop offset='100%' stop-color='${color==='w'?'#7f0a19':'#d9d9d9'}'/></radialGradient></defs>
+    <circle cx='50' cy='50' r='46' fill='url(#g)' stroke='${color==='w' ? '#8a0f20' : '#cfcfcf'}' stroke-width='3'/>
+    <circle cx='50' cy='50' r='40' fill='none' stroke='${ring}' stroke-width='2' stroke-dasharray='3 3' opacity='.9'/>
+    <text x='50' y='34' text-anchor='middle' font-family='Segoe UI, Roboto, system-ui' font-size='14' font-weight='700' fill='${text}'>${title}</text>
+    <foreignObject x='12' y='42' width='76' height='50'>
+      <div xmlns='http://www.w3.org/1999/xhtml' style='width:76px;height:50px;display:flex;align-items:center;justify-content:center;text-align:center;font-family:Segoe UI, Roboto, system-ui;font-weight:800;font-size:12px;line-height:1.05;color:${text};'>
+        <div>${escapeHtml(label).slice(0,36)}</div>
       </div>
-      <div class="card">
-        <div style="font-size:14px;margin-bottom:6px">Brikker som spillere</div>
-        <select id="setSelect" class="select">
-          <option value="modern">Moderne XI (hvit) vs Legender (svart)</option>
-          <option value="legendsFirst">Legender (hvit) vs Moderne XI (svart)</option>
-          <option value="generic">Generisk roller (begge farger)</option>
-        </select>
-        <div style="font-size:12px;opacity:.9;margin-top:8px">Rediger etiketter:</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-          <input id="labelK" class="text" value="VIRGIL van DIJK (C)">
-          <input id="labelQ" class="text" value="MO SALAH">
-          <input id="labelR" class="text" value="TAA / ROBBO">
-          <input id="labelB" class="text" value="Mac A / Szobo">
-          <input id="labelN" class="text" value="NÚÑEZ / JOTA">
-          <input id="labelP" class="text" value="AKADEMIET">
-        </div>
-        <button id="applyLabels" class="button" style="margin-top:8px">Bruk egne etiketter</button>
-      </div>
-    </div>
-  </div>
+    </foreignObject>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+window.themeImage = function(code){ const color=code[0]==='w'?'w':'b'; const type=code[1].toUpperCase(); return svgPiece({color,type}); };
 
-  <script>
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.register('./sw.js').catch(()=>{});
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-  <script src="./app.js"></script>
-</body>
-</html>
+function applyPreset(name){
+  if(name==='modern'){
+    labelMap = {
+      w:{K:"VIRGIL van DIJK (C)", Q:"MO SALAH", R:"TAA / ROBBO", B:"Mac A / Szobo", N:"NÚÑEZ / JOTA", P:"AKADEMIET"},
+      b:{K:"STEVEN GERRARD", Q:"SADIO MANÉ", R:"CARRA / HYYPIÄ", B:"XABI / HENDERSON", N:"TORRES / OWEN", P:"BOOT ROOM"}
+    };
+  }else if(name==='legendsFirst'){
+    labelMap = {
+      w:{K:"STEVEN GERRARD", Q:"KENNY DALGLISH", R:"CARRA / HYYPIÄ", B:"XABI / S.GERRARD", N:"TORRES / SUÁREZ", P:"BOOT ROOM"},
+      b:{K:"VIRGIL van DIJK (C)", Q:"MO SALAH", R:"TAA / ROBBO", B:"Mac A / Szobo", N:"NÚÑEZ / JOTA", P:"AKADEMIET"}
+    };
+  }else{
+    labelMap = { w:{K:"KAPTEIN",Q:"PLAYMAKER",R:"BACKER",B:"MIDTBANE",N:"ANGRIPER",P:"REKRUTT"}, b:{K:"KAPTEIN",Q:"PLAYMAKER",R:"BACKER",B:"MIDTBANE",N:"ANGRIPER",P:"REKRUTT"} };
+  }
+  if(window.board && window.game){ board.position(game.fen(), false); }
+}
+
+// Klokker
+let baseMin=5, inc=3, wTime=baseMin*60*1000, bTime=baseMin*60*1000, running=false, tick=null;
+function resetClocks(){ wTime=baseMin*60*1000; bTime=baseMin*60*1000; $('wTime').textContent=fmt(wTime); $('bTime').textContent=fmt(bTime); $('wBar').style.transform='scaleX(0)'; $('bBar').style.transform='scaleX(0)'; }
+function start(){ running=true; tick && clearInterval(tick); tick=setInterval(()=>{
+  if(game.game_over()){ running=false; clearInterval(tick); return; }
+  if(game.turn()==='w'){ wTime-=100; } else { bTime-=100; }
+  $('wTime').textContent=fmt(wTime); $('bTime').textContent=fmt(bTime);
+  const tot=baseMin*60*1000; $('wBar').style.transform=`scaleX(${Math.max(0,Math.min(1,1-(wTime/(tot||1))))})`; $('bBar').style.transform=`scaleX(${Math.max(0,Math.min(1,1-(bTime/(tot||1))))})`;
+  if(wTime<=0){ running=false; clearInterval(tick); $('status').textContent='Svart vinner på tid.'; }
+  if(bTime<=0){ running=false; clearInterval(tick); $('status').textContent='Hvit vinner på tid.'; }
+},100); maybeAIMoveAtStart(); }
+function pause(){ running=false; tick && clearInterval(tick); }
+
+// Enkel AI (negamax)
+function orderMoves(g,moves){ return moves.map(m=>{ const c=/x/.test(m.san), h=/\+/.test(m.san); return {m,w:(c?2:0)+(h?1:0)}; }).sort((a,b)=>b.w-a.w).map(x=>x.m); }
+function evaluate(g){ if(g.in_checkmate()) return g.turn()==='w'? -99999:99999; if(g.in_draw()) return 0; const val={p:100,n:320,b:330,r:500,q:900,k:0}; let s=0; const bd=g.board(); const center=new Set(['d4','e4','d5','e5']); for(let r=0;r<8;r++){ for(let c=0;c<8;c++){ const cell=bd[r][c]; if(!cell) continue; const v=val[cell.type]||0; s+=cell.color==='w'?v:-v; const file=String.fromCharCode(97+c),rank=(8-r),sq=file+rank; if(center.has(sq)) s+=cell.color==='w'?3:-3; }} const mob=g.moves().length; s+=(g.turn()==='w'?mob:-mob)*0.1; return s; }
+function negamax(g,d,a,b){ if(d===0||g.game_over()) return evaluate(g); let best=-Infinity; const ms=orderMoves(g,g.moves({verbose:true})); for(const mv of ms){ g.move(mv); const sc=-negamax(g,d-1,-b,-a); g.undo(); if(sc>best) best=sc; if(sc>a) a=sc; if(a>=b) break; } return best; }
+function findBestMove(g,d){ let best=null,bestScore=-Infinity; const ms=orderMoves(g,g.moves({verbose:true})); for(const mv of ms){ g.move(mv); const sc=-negamax(g,d-1,-Infinity,Infinity); g.undo(); if(sc>bestScore){ bestScore=sc; best=mv; } } return best||ms[0]||null; }
+function aiMoveSoon(){ setTimeout(()=>{ const depth=Math.max(1,Math.min(4,parseInt($('aiDepth').value||'2',10))); const best=findBestMove(game,depth); if(best){ const m=game.move(best); board.position(game.fen(), false); if(running){ if(m.color==='w'){ wTime+=inc*1000; } else { bTime+=inc*1000; } } updateMoves(); updateStatus(); } },120); }
+function maybeAIMoveAtStart(){ if($('mode').value!=='ai') return; const side=$('aiSide').value; if((side==='white'&&game.turn()==='w')||(side==='black'&&game.turn()==='b')) aiMoveSoon(); }
+
+// Trekk/status
+function afterLegalMove(m){ updateMoves(); updateStatus(); if(running){ if(m.color==='w'){ wTime+=inc*1000; } else { bTime+=inc*1000; } } }
+function updateMoves(){ const hist=game.history(); const box=$('moves'); if(hist.length===0){ box.innerHTML='<div style="opacity:.8">Trekk vil vises her…</div>'; return; } let out=''; for(let i=0;i<hist.length;i++){ if(i%2===0){ out += `<span>${(i/2)+1}.</span>`; } out += `<span>${hist[i]}</span>`; } box.innerHTML=out; }
+function updateStatus(){ const s=$('status'); if(game.game_over()){ if(game.in_checkmate()) s.textContent=(game.turn()==='w'?'Svart':'Hvit')+' vant (sjakkmatt).'; else if(game.in_stalemate()) s.textContent='Patt (uavgjort).'; else if(game.in_draw()) s.textContent='Uavgjort.'; else s.textContent='Spillet er slutt.'; running=false; } else { s.textContent=(game.turn()==='w'?'Hvit':'Svart')+(game.in_check()?' i trekket (sjakk)':' i trekket')+'.'; } }
+
+let game=null, board=null;
+function initGame(){
+  try{
+    game = new window.Chess();
+    board = window.Chessboard('board', {
+      draggable: true,
+      responsive: true,
+      position: 'start',
+      pieceTheme: window.themeImage,
+      onDrop: (source, target)=>{
+        const move = game.move({from:source,to:target,promotion:'q'});
+        if(move===null){ return 'snapback'; }
+        afterLegalMove(move);
+        if($('mode').value==='ai' && !game.game_over()){ aiMoveSoon(); }
+      }
+    });
+    setTimeout(()=>board.resize(),0);
+    window.addEventListener('resize', ()=>board.resize());
+  }catch(e){
+    console.error(e);
+    $('fallback').style.display='block';
+  }
+
+  $('startBtn').onclick = start;
+  $('pauseBtn').onclick = pause;
+  $('newBtn').onclick = ()=>{ pause(); game.reset(); board.start(); updateMoves(); updateStatus(); resetClocks(); };
+  $('flipBtn').onclick = ()=>{ board.flip(); };
+  $('undoBtn').onclick = ()=>{ if($('mode').value==='ai'){ if(game.history().length>=2){ game.undo(); game.undo(); } } else { game.undo(); } board.position(game.fen(), false); updateMoves(); updateStatus(); };
+  $('drawBtn').onclick = ()=>{ pause(); $('status').textContent='Uavgjort etter avtale.'; };
+  $('resignBtn').onclick = ()=>{ pause(); $('status').textContent=(game.turn()==='w'?'Hvit':'Svart')+' resignerte.'; };
+  $('pgnBtn').onclick = ()=>{ const pgn=game.pgn(); navigator.clipboard && navigator.clipboard.writeText(pgn).then(()=>alert('PGN kopiert.')); };
+  $('preset').onchange = (e)=>{ const map={"1+0":[1,0],"3+2":[3,2],"5+3":[5,3],"10+0":[10,0],"15+10":[15,10],"30+0":[30,0]}; const v=e.target.value; if(map[v]){ baseMin=map[v][0]; inc=map[v][1]; $('initMin').value=baseMin; $('increment').value=inc; resetClocks(); } };
+  $('initMin').onchange = (e)=>{ baseMin=Math.max(1,parseInt(e.target.value||'5',10)); resetClocks(); };
+  $('increment').onchange = (e)=>{ inc=Math.max(0,parseInt(e.target.value||'0',10)); };
+  $('mode').onchange = ()=>{ const ai = $('mode').value==='ai'; $('aiRow1').style.display = ai?'':'none'; $('aiRow2').style.display = ai?'':'none'; pause(); game.reset(); board.start(); updateMoves(); updateStatus(); resetClocks(); };
+  $('aiSide').onchange = ()=>{ pause(); game.reset(); board.start(); updateMoves(); updateStatus(); resetClocks(); };
+  $('setSelect').onchange = (e)=>applyPreset(e.target.value);
+  $('applyLabels').onclick = ()=>{ labelMap.w.K=$('labelK').value||labelMap.w.K; labelMap.w.Q=$('labelQ').value||labelMap.w.Q; labelMap.w.R=$('labelR').value||labelMap.w.R; labelMap.w.B=$('labelB').value||labelMap.w.B; labelMap.w.N=$('labelN').value||labelMap.w.N; labelMap.w.P=$('labelP').value||labelMap.w.P; board.position(game.fen(), false); };
+
+  resetClocks(); updateStatus(); updateMoves(); applyPreset('modern');
+}
+
+// ---- Robust loader: prøver flere CDN-er ved feil ----
+function loadChain(urls, done, fail){
+  let i=0;
+  const tryNext = ()=> {
+    if(i>=urls.length){ fail && fail(); return; }
+    const s=document.createElement('script');
+    s.src=urls[i++]; s.onload=()=>done && done(); s.onerror=tryNext;
+    document.body.appendChild(s);
+  };
+  tryNext();
+}
+
+window.addEventListener('load', ()=>{
+  if(window.Chess && window.Chessboard){ initGame(); return; }
+  // Prøv chess.js først (cdnjs → jsDelivr → unpkg)
+  loadChain([
+    'https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js',
+    'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js',
+    'https://unpkg.com/chess.js@1.0.0/dist/chess.min.js'
+  ], ()=>{
+    // Når chess.js er inne, last chessboard.js (cdnjs → jsDelivr → unpkg)
+    loadChain([
+      'https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.js',
+      'https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js',
+      'https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js'
+    ], ()=>initGame(), ()=>{$('fallback').style.display='block';});
+  }, ()=>{$('fallback').style.display='block';});
+});
