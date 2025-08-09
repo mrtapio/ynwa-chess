@@ -39,7 +39,22 @@
     .status{text-align:center;margin-top:8px;font-weight:600}
     .white-1e1d7{background: var(--pitch-light) !important;}
     .black-3c85d{background: var(--pitch-dark) !important;}
-  </style>
+/* ---- Minimal chessboard.css inline (slik at brettet alltid tegnes) ---- */
+.chessboard-63f37 { position: relative; overflow: hidden; }
+.square-55d63 { float: left; width:12.5%; padding-bottom:12.5%; position: relative; }
+.square-55d63:after { content:''; position:absolute; inset:0; }
+.white-1e1d7:after { background: var(--pitch-light); }
+.black-3c85d:after { background: var(--pitch-dark); }
+
+/* Brikker (chessboard.js bruker <div class="piece-417db" style="background-image:url(...)">) */
+.piece-417db { position:absolute; inset:0; background-repeat:no-repeat; background-position:center center; background-size:90% 90%; }
+
+/* Markeringer (valgfritt) */
+.highlight1-32417:after { box-shadow: inset 0 0 0 3px rgba(255,209,0,.9); }
+.highlight2-9c5d2:after { box-shadow: inset 0 0 0 3px rgba(255,255,255,.85); }
+
+/* Rydd opp float */
+.clearfix-7da63::after { content:""; display:block; clear:both; }  </style>
 </head>
 <body>
   <div class="app">
