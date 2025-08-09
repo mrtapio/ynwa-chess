@@ -1,12 +1,40 @@
-const CACHE_NAME = 'ynwa-chess-v4';
+const CACHE_NAME = 'ynwa-chess-v5';
 const CORE = [
   './','./index.html','./app.js','./manifest.webmanifest',
   './icons/icon-192.png','./icons/icon-512.png',
-  'https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css',
-  'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js',
-  'https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js'
+  // cdnjs primær
+  'https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.js'
 ];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(CORE.map(u=>new Request(u,{mode:'no-cors'})))).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>k===CACHE_NAME?Promise.resolve():caches.delete(k)))).then(()=>self.clients.claim()));});
-self.addEventListener('fetch',e=>{ if(e.request.method!=='GET') return;
-  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(cached=>cached||fetch(e.request).then(res=>{const cp=res.clone();caches.open(CACHE_NAME).then(c=>c.put(e.request,cp));return res;}).catch(()=>cached||Response.error())));});
+
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(CORE.map(u => new Request(u, {mode:'no-cors'})));
+    self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => k===CACHE_NAME ? Promise.resolve() : caches.delete(k)));
+    self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith((async () => {
+    const cached = await caches.match(event.request, {ignoreSearch:true});
+    try {
+      const fresh = await fetch(event.request);
+      const ok = (fresh.status === 200 || fresh.type === 'opaque');
+      if (ok) caches.open(CACHE_NAME).then(c => c.put(event.request, fresh.clone()));
+      return fresh;
+    } catch {
+      return cached || Response.error();
+    }
+  })());
+});
