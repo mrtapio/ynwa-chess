@@ -6,7 +6,10 @@
   <title>YNWA Chess (PWA)</title>
   <meta name="theme-color" content="#c8102e">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+
+  <!-- chessboard.js CSS fra cdnjs (stabil) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.css">
+
   <style>
     :root{--lfc-red:#c8102e;--lfc-dark:#0e0e0f;--pitch-light:#3d8b5a;--pitch-dark:#2e6c46;--accent:#ffd100;}
     html,body{margin:0;padding:0;background:#0e0e0f;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
@@ -23,7 +26,7 @@
     .layout{display:grid;grid-template-columns:1fr;gap:10px}
     @media(min-width:760px){.layout{grid-template-columns:minmax(0,1fr) 300px;}}
     .board-wrap{padding:10px;border-radius:14px;background:linear-gradient(180deg,#0d0d0d,#171717);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center}
-    /* Viktig: fast kvadratisk høyde/bredde */
+    /* Viktig: kvadratisk, responsiv bredde */
     #board{width:100%;max-width:680px;aspect-ratio:1/1;border-radius:10px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.06);background:#0002}
     .clock-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;width:100%}
     .clock{position:relative;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#0d0d0d}
@@ -40,7 +43,7 @@
 </head>
 <body>
   <div class="app">
-    <header><h1>YNWA Chess (PWA)</h1><div>v1.4</div></header>
+    <header><h1>YNWA Chess (PWA)</h1><div>v1.5</div></header>
 
     <div class="toolbar">
       <div class="card">
@@ -129,8 +132,10 @@
       navigator.serviceWorker.register('./sw.js').catch(()=>{});
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+
+  <!-- Primær: cdnjs. app.js har fallback til jsDelivr/unpkg -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
