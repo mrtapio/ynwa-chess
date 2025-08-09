@@ -50,13 +50,91 @@ function applyPreset(name){
 
 // Size board
 function sizeBoardDiv(){
-  const pad = 24;
-  const max = 680;
+  const pad = 24, max = 680;
   const size = Math.min(window.innerWidth - pad, max);
   const el = $('board');
   el.style.width = size + 'px';
   el.style.height = size + 'px';
 }
+
+// Clocks
+let baseMin=5, inc=3, wTime=baseMin*60*1000, bTime=baseMin*60*1000, running=false, tick=null;
+function resetClocks(){ wTime=baseMin*60*1000; bTime=baseMin*60*1000; $('wTime').textContent=fmt(wTime); $('bTime').textContent=fmt(bTime); $('wBar').style.transform='scaleX(0)'; $('bBar').style.transform='scaleX(0)'; }
+function start(){ running=true; tick && clearInterval(tick); tick=setInterval(()=>{
+  if(game.game_over()){ running=false; clearInterval(tick); return; }
+  if(game.turn()==='w'){ wTime-=100; } else { bTime-=100; }
+  $('wTime').textContent=fmt(wTime); $('bTime').textContent=fmt(bTime);
+  const tot=baseMin*60*1000; $('wBar').style.transform=`scaleX(${Math.max(0,Math.min(1,1-(wTime/(tot||1))))})`; $('bBar').style.transform=`scaleX(${Math.max(0,Math.min(1,1-(bTime/(tot||1))))})`;
+  if(wTime<=0){ running=false; clearInterval(tick); $('status').textContent='Svart vinner på tid.'; }
+  if(bTime<=0){ running=false; clearInterval(tick); $('status').textContent='Hvit vinner på tid.'; }
+},100); maybeAIMoveAtStart(); }
+function pause(){ running=false; tick && clearInterval(tick); }
+
+// AI
+function orderMoves(g,moves){ return moves.map(m=>{ const c=/x/.test(m.san), h=/\+/.test(m.san); return {m,w:(c?2:0)+(h?1:0)}; }).sort((a,b)=>b.w-a.w).map(x=>x.m); }
+function evaluate(g){ if(g.in_checkmate()) return g.turn()==='w'? -99999:99999; if(g.in_draw()) return 0; const val={p:100,n:320,b:330,r:500,q:900,k:0}; let s=0; const bd=g.board(); const center=new Set(['d4','e4','d5','e5']); for(let r=0;r<8;r++){ for(let c=0;c<8;c++){ const cell=bd[r][c]; if(!cell) continue; const v=val[cell.type]||0; s+=cell.color==='w'?v:-v; const file=String.fromCharCode(97+c),rank=(8-r),sq=file+rank; if(center.has(sq)) s+=cell.color==='w'?3:-3; }} const mob=g.moves().length; s+=(g.turn()==='w'?mob:-mob)*0.1; return s; }
+function negamax(g,d,a,b){ if(d===0||g.game_over()) return evaluate(g); let best=-Infinity; const ms=orderMoves(g,g.moves({verbose:true})); for(const mv of ms){ g.move(mv); const sc=-negamax(g,d-1,-b,-a); g.undo(); if(sc>best) best=sc; if(sc>a) a=sc; if(a>=b) break; } return best; }
+function findBestMove(g,d){ let best=null,bestScore=-Infinity; const ms=orderMoves(g,g.moves({verbose:true})); for(const mv of ms){ g.move(mv); const sc=-negamax(g,d-1,-Infinity,Infinity); g.undo(); if(sc>bestScore){ bestScore=sc; best=mv; } } return best||ms[0]||null; }
+function aiMoveSoon(){ setTimeout(()=>{ const depth=Math.max(1,Math.min(4,parseInt($('aiDepth').value||'2',10))); const best=findBestMove(game,depth); if(best){ const m=game.move(best); board.position(game.fen(), false); if(running){ if(m.color==='w'){ wTime+=inc*1000; } else { bTime+=inc*1000; } } updateMoves(); updateStatus(); } },120); }
+function maybeAIMoveAtStart(){ if($('mode').value!=='ai') return; const side=$('aiSide').value; if((side==='white'&&game.turn()==='w')||(side==='black'&&game.turn()==='b')) aiMoveSoon(); }
+
+// Moves/status
+function afterLegalMove(m){ updateMoves(); updateStatus(); if(running){ if(m.color==='w'){ wTime+=inc*1000; } else { bTime+=inc*1000; } } }
+function updateMoves(){ const hist=game.history(); const box=$('moves'); if(hist.length===0){ box.innerHTML='<div style="opacity:.8">Trekk vil vises her…</div>'; return; } let out=''; for(let i=0;i<hist.length;i++){ if(i%2===0){ out += `<span>${(i/2)+1}.</span>`; } out += `<span>${hist[i]}</span>`; } box.innerHTML=out; }
+function updateStatus(){ const s=$('status'); if(game.game_over()){ if(game.in_checkmate()) s.textContent=(game.turn()==='w'?'Svart':'Hvit')+' vant (sjakkmatt).'; else if(game.in_stalemate()) s.textContent='Patt (uavgjort).'; else if(game.in_draw()) s.textContent='Uavgjort.'; else s.textContent='Spillet er slutt.'; running=false; } else { s.textContent=(game.turn()==='w'?'Hvit':'Svart')+(game.in_check()?' i trekket (sjakk)':' i trekket')+'.'; } }
+
+// Init
+let game=null, board=null;
+function initGame(){
+  sizeBoardDiv();
+  window.addEventListener('resize', ()=>{ sizeBoardDiv(); if(board) board.resize(); });
+  try{
+    game = new window.Chess();
+    board = window.Chessboard('board', {
+      draggable: true,
+      position: 'start',
+      pieceTheme: window.themeImage,
+      onDrop: (source, target)=>{
+        const move = game.move({from:source,to:target,promotion:'q'});
+        if(move===null){ return 'snapback'; }
+        afterLegalMove(move);
+        if($('mode').value==='ai' && !game.game_over()){ aiMoveSoon(); }
+      }
+    });
+  }catch(e){
+    console.error(e);
+    $('fallback').style.display='block';
+  }
+
+  // controls
+  $('startBtn').onclick = start;
+  $('pauseBtn').onclick = pause;
+  $('newBtn').onclick = ()=>{ pause(); game.reset(); board.start(); updateMoves(); updateStatus(); resetClocks(); };
+  $('flipBtn').onclick = ()=>{ board.flip(); };
+  $('undoBtn').onclick = ()=>{ if($('mode').value==='ai'){ if(game.history().length>=2){ game.undo(); game.undo(); } } else { game.undo(); } board.position(game.fen(), false); updateMoves(); updateStatus(); };
+  $('drawBtn').onclick = ()=>{ pause(); $('status').textContent='Uavgjort etter avtale.'; };
+  $('resignBtn').onclick = ()=>{ pause(); $('status').textContent=(game.turn()==='w'?'Hvit':'Svart')+' resignerte.'; };
+  $('pgnBtn').onclick = ()=>{ const pgn=game.pgn(); navigator.clipboard && navigator.clipboard.writeText(pgn).then(()=>alert('PGN kopiert.')); };
+  $('preset').onchange = (e)=>{ const map={"1+0":[1,0],"3+2":[3,2],"5+3":[5,3],"10+0":[10,0],"15+10":[15,10],"30+0":[30,0]}; const v=e.target.value; if(map[v]){ baseMin=map[v][0]; inc=map[v][1]; $('initMin').value=baseMin; $('increment').value=inc; resetClocks(); } };
+  $('initMin').onchange = (e)=>{ baseMin=Math.max(1,parseInt(e.target.value||'5',10)); resetClocks(); };
+  $('increment').onchange = (e)=>{ inc=Math.max(0,parseInt(e.target.value||'0',10)); };
+  $('mode').onchange = ()=>{ const ai = $('mode').value==='ai'; $('aiRow1').style.display = ai?'':'none'; $('aiRow2').style.display = ai?'':'none'; pause(); game.reset(); board.start(); updateMoves(); updateStatus(); resetClocks(); };
+  $('aiSide').onchange = ()=>{ pause(); game.reset(); board.start(); updateMoves(); updateStatus(); resetClocks(); };
+  $('setSelect').onchange = (e)=>applyPreset(e.target.value);
+  $('applyLabels').onclick = ()=>{ labelMap.w.K=$('labelK').value||labelMap.w.K; labelMap.w.Q=$('labelQ').value||labelMap.w.Q; labelMap.w.R=$('labelR').value||labelMap.w.R; labelMap.w.B=$('labelB').value||labelMap.w.B; labelMap.w.N=$('labelN').value||labelMap.w.N; labelMap.w.P=$('labelP').value||labelMap.w.P; board.position(game.fen(), false); };
+
+  resetClocks(); updateStatus(); updateMoves(); applyPreset('modern');
+}
+
+window.addEventListener('load', ()=>{
+  if(window.Chess && window.Chessboard){ initGame(); }
+  else{
+    const s1 = document.createElement('script'); s1.src='https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.min.js';
+    const s2 = document.createElement('script'); s2.src='https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js';
+    s1.onload=()=>{ s2.onload=()=>initGame(); document.body.appendChild(s2); }; s1.onerror=()=>{$('fallback').style.display='block';}; s2.onerror=()=>{$('fallback').style.display='block';};
+    document.body.appendChild(s1);
+  }
+});}
 
 // Clocks
 let baseMin=5, inc=3, wTime=baseMin*60*1000, bTime=baseMin*60*1000, running=false, tick=null;
